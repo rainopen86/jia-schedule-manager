@@ -6,10 +6,16 @@ import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import fs from "fs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = process.env.NODE_ENV === "production" ? "/data/schedule.db" : "schedule.db";
+// Database Path Setup
+const dbPath = (process.env.NODE_ENV === "production" && fs.existsSync("/data")) 
+  ? "/data/schedule.db" 
+  : "schedule.db";
+
 const db = new Database(dbPath);
 
 // Initialize Database
