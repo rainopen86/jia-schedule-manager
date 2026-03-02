@@ -25,28 +25,8 @@ export default function App() {
         const itemsData = await itemsRes.json();
         const notesData = await notesRes.json();
 
-        if (itemsData.length === 0) {
-          // Initialize with default data if empty
-          const defaultItems = getDefaultItems();
-          defaultItems.forEach(item => {
-            sendWsMessage('ITEM_CREATE', item);
-          });
-          setItems(defaultItems);
-        } else {
-          setItems(itemsData);
-        }
-
-        if (notesData.length === 0) {
-          const defaultNote = {
-            id: 'default-note',
-            content: '사제동행 아침 독서 활동',
-            createdAt: new Date().toISOString()
-          };
-          sendWsMessage('NOTE_CREATE', defaultNote);
-          setNotes([defaultNote]);
-        } else {
-          setNotes(notesData);
-        }
+        setItems(itemsData);
+        setNotes(notesData);
       } catch (err) {
         console.error('Failed to fetch data:', err);
       }
