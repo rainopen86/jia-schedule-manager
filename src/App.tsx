@@ -1,0 +1,224 @@
+import React, { useState, useEffect } from 'react';
+import { ScheduleItem, Note, DayOfWeek } from './types';
+import Timetable from './components/Timetable';
+import ScheduleModal from './components/ScheduleModal';
+import NotesSection from './components/NotesSection';
+import BusTimetable from './components/BusTimetable';
+import { Plus, Settings, Heart, Calendar as CalendarIcon } from 'lucide-react';
+import { motion } from 'motion/react';
+
+export default function App() {
+  const [items, setItems] = useState<ScheduleItem[]>(() => {
+    const saved = localStorage.getItem('kid-schedule-items');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) return parsed;
+    }
+
+    // Default data from images
+    const defaultItems: ScheduleItem[] = [];
+    const days: DayOfWeek[] = ['월', '화', '수', '목', '금'];
+    const times = [
+      { name: '아침활동', start: '08:30', end: '09:00', color: '#FEF9C3' },
+      { name: '1교시', start: '09:00', end: '09:40' },
+      { name: '2교시', start: '09:50', end: '10:30' },
+      { name: '3교시', start: '10:40', end: '11:20' },
+      { name: '4교시', start: '11:30', end: '12:10' },
+      { name: '5교시', start: '12:20', end: '13:00' },
+      { name: '점심시간', start: '13:00', end: '13:50', color: '#DCFCE7' },
+      { name: '6교시', start: '13:50', end: '14:30' },
+    ];
+
+    const subjects: Record<DayOfWeek, string[]> = {
+      '월': ['영어', '체육', '국어', '사회', '도덕'],
+      '화': ['국어', '수학', '사회', '과학', '체육', '음악'],
+      '수': ['영어', '수학', '사회', '과학', '음악'],
+      '목': ['국어', '수학', '과학', '미술', '미술'],
+      '금': ['국어', '국어', '체육', '수학', '창체'],
+      '토': [],
+      '일': []
+    };
+
+    const colorMap: Record<string, string> = {
+      '국어': '#FEE2E2',
+      '수학': '#E0F2FE',
+      '영어': '#F3E8FF',
+      '사회': '#FFEDD5',
+      '과학': '#DCFCE7',
+      '체육': '#FEF9C3',
+      '미술': '#FCE7F3',
+      '음악': '#E0F2FE',
+      '도덕': '#DCFCE7',
+      '창체': '#DCFCE7',
+    };
+
+    days.forEach(day => {
+      times.forEach((time) => {
+        let title = time.name;
+        let color = time.color || '#F3F4F6';
+
+        if (time.name.includes('교시')) {
+          const subjectIdx = parseInt(time.name) - 1;
+          const subject = subjects[day][subjectIdx];
+          if (subject) {
+            title = subject;
+            color = colorMap[subject] || color;
+          } else {
+            return; // No class
+          }
+        }
+
+        defaultItems.push({
+          id: Math.random().toString(36).substr(2, 9),
+          title,
+          day,
+          startTime: time.start,
+          endTime: time.end,
+          color,
+        });
+      });
+    });
+
+    return defaultItems;
+  });
+
+  const [notes, setNotes] = useState<Note[]>(() => {
+    const saved = localStorage.getItem('kid-schedule-notes');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.length > 0) return parsed;
+    }
+    
+    return [{
+      id: 'default-note',
+      content: '사제동행 아침 독서 활동',
+      createdAt: new Date().toISOString()
+    }];
+  });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('kid-schedule-items', JSON.stringify(items));
+  }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem('kid-schedule-notes', JSON.stringify(notes));
+  }, [notes]);
+
+  const handleSaveItem = (item: ScheduleItem) => {
+    if (editingItem) {
+      setItems(items.map((i) => (i.id === item.id ? item : i)));
+    } else {
+      setItems([...items, item]);
+    }
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setItems(items.filter((i) => i.id !== id));
+  };
+
+  const handleAddNote = (content: string) => {
+    const newNote: Note = {
+      id: Math.random().toString(36).substr(2, 9),
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    setNotes([newNote, ...notes]);
+  };
+
+  const handleDeleteNote = (id: string) => {
+    setNotes(notes.filter((n) => n.id !== id));
+  };
+
+  const openAddModal = () => {
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: ScheduleItem) => {
+    setEditingItem(item);
+    setIsModalOpen(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-brand-bg text-brand-ink selection:bg-brand-accent/10">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-brand-bg/80 backdrop-blur-md border-b border-black/5 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand-accent/20">
+              <Heart size={20} fill="currentColor" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold serif tracking-tight">지아 시간표 매니저</h1>
+              <p className="text-[10px] uppercase tracking-widest text-brand-ink/40 font-semibold">Our Kid's Daily Routine</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="p-2 text-brand-ink/40 hover:text-brand-ink transition-colors">
+              <Settings size={20} />
+            </button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={openAddModal}
+              className="flex items-center gap-2 bg-brand-accent text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-brand-accent/20 hover:opacity-90 transition-all"
+            >
+              <Plus size={18} />
+              <span>일정 추가</span>
+            </motion.button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-12">
+        {/* Welcome Section */}
+        <section className="space-y-2">
+          <h2 className="text-4xl font-light serif italic">안녕하세요, 오늘도 행복한 하루 되세요!</h2>
+          <p className="text-brand-ink/40 text-sm">아이의 성장을 기록하고 일상을 계획하는 따뜻한 공간입니다.</p>
+        </section>
+
+        {/* Timetable Section */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-semibold serif">주간 시간표</h3>
+            <div className="flex items-center gap-2 text-xs text-brand-ink/40 bg-white px-3 py-1.5 rounded-full border border-black/5">
+              <CalendarIcon size={14} />
+              <span>이번 주 일정</span>
+            </div>
+          </div>
+          <Timetable items={items} onEdit={openEditModal} />
+        </section>
+
+        {/* Notes Section */}
+        <section>
+          <NotesSection notes={notes} onAdd={handleAddNote} onDelete={handleDeleteNote} />
+        </section>
+
+        {/* Bus Timetable Section */}
+        <section>
+          <BusTimetable />
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="max-w-7xl mx-auto px-6 py-12 border-t border-black/5 text-center">
+        <p className="text-xs text-brand-ink/20 font-medium uppercase tracking-widest">
+          &copy; {new Date().getFullYear()} Kid's Schedule Manager. Crafted with Love.
+        </p>
+      </footer>
+
+      {/* Modal */}
+      <ScheduleModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveItem}
+        onDelete={handleDeleteItem}
+        editItem={editingItem}
+      />
+    </div>
+  );
+}
