@@ -8,14 +8,93 @@ import { Plus, Settings, Heart, Calendar as CalendarIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function App() {
-  const [items, setItems] = useState<ScheduleItem[]>(() => {
-    const saved = localStorage.getItem('kid-schedule-items');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.length > 0) return parsed;
-    }
+  const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+  const [ws, setWs] = useState<WebSocket | null>(null);
 
-    // Default data from images
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [itemsRes, notesRes] = await Promise.all([
+          fetch('/api/items'),
+          fetch('/api/notes')
+        ]);
+        const itemsData = await itemsRes.json();
+        const notesData = await notesRes.json();
+
+        if (itemsData.length === 0) {
+          // Initialize with default data if empty
+          const defaultItems = getDefaultItems();
+          defaultItems.forEach(item => {
+            sendWsMessage('ITEM_CREATE', item);
+          });
+          setItems(defaultItems);
+        } else {
+          setItems(itemsData);
+        }
+
+        if (notesData.length === 0) {
+          const defaultNote = {
+            id: 'default-note',
+            content: '사제동행 아침 독서 활동',
+            createdAt: new Date().toISOString()
+          };
+          sendWsMessage('NOTE_CREATE', defaultNote);
+          setNotes([defaultNote]);
+        } else {
+          setNotes(notesData);
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // WebSocket connection
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+    socket.onmessage = (event) => {
+      const { type, payload } = JSON.parse(event.data);
+      switch (type) {
+        case 'ITEM_CREATE':
+          setItems(prev => [...prev, payload]);
+          break;
+        case 'ITEM_UPDATE':
+          setItems(prev => prev.map(i => i.id === payload.id ? payload : i));
+          break;
+        case 'ITEM_DELETE':
+          setItems(prev => prev.filter(i => i.id !== payload.id));
+          break;
+        case 'NOTE_CREATE':
+          setNotes(prev => [payload, ...prev]);
+          break;
+        case 'NOTE_DELETE':
+          setNotes(prev => prev.filter(n => n.id !== payload.id));
+          break;
+      }
+    };
+
+    setWs(socket);
+    return () => socket.close();
+  }, []);
+
+  const sendWsMessage = (type: string, payload: any) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type, payload }));
+    } else {
+      // Fallback if WS not ready (though in real app we'd queue or use REST)
+      console.warn('WS not ready, message not sent:', type);
+    }
+  };
+
+  const getDefaultItems = (): ScheduleItem[] => {
     const defaultItems: ScheduleItem[] = [];
     const days: DayOfWeek[] = ['월', '화', '수', '목', '금'];
     const times = [
@@ -40,83 +119,45 @@ export default function App() {
     };
 
     const colorMap: Record<string, string> = {
-      '국어': '#FEE2E2',
-      '수학': '#E0F2FE',
-      '영어': '#F3E8FF',
-      '사회': '#FFEDD5',
-      '과학': '#DCFCE7',
-      '체육': '#FEF9C3',
-      '미술': '#FCE7F3',
-      '음악': '#E0F2FE',
-      '도덕': '#DCFCE7',
-      '창체': '#DCFCE7',
+      '국어': '#FEE2E2', '수학': '#E0F2FE', '영어': '#F3E8FF', '사회': '#FFEDD5',
+      '과학': '#DCFCE7', '체육': '#FEF9C3', '미술': '#FCE7F3', '음악': '#E0F2FE',
+      '도덕': '#DCFCE7', '창체': '#DCFCE7',
     };
 
     days.forEach(day => {
       times.forEach((time) => {
         let title = time.name;
         let color = time.color || '#F3F4F6';
-
         if (time.name.includes('교시')) {
           const subjectIdx = parseInt(time.name) - 1;
           const subject = subjects[day][subjectIdx];
           if (subject) {
             title = subject;
             color = colorMap[subject] || color;
-          } else {
-            return; // No class
-          }
+          } else return;
         }
-
         defaultItems.push({
           id: Math.random().toString(36).substr(2, 9),
-          title,
-          day,
-          startTime: time.start,
-          endTime: time.end,
-          color,
+          title, day, startTime: time.start, endTime: time.end, color,
         });
       });
     });
-
     return defaultItems;
-  });
-
-  const [notes, setNotes] = useState<Note[]>(() => {
-    const saved = localStorage.getItem('kid-schedule-notes');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.length > 0) return parsed;
-    }
-    
-    return [{
-      id: 'default-note',
-      content: '사제동행 아침 독서 활동',
-      createdAt: new Date().toISOString()
-    }];
-  });
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
-
-  useEffect(() => {
-    localStorage.setItem('kid-schedule-items', JSON.stringify(items));
-  }, [items]);
-
-  useEffect(() => {
-    localStorage.setItem('kid-schedule-notes', JSON.stringify(notes));
-  }, [notes]);
+  };
 
   const handleSaveItem = (item: ScheduleItem) => {
     if (editingItem) {
       setItems(items.map((i) => (i.id === item.id ? item : i)));
+      sendWsMessage('ITEM_UPDATE', item);
     } else {
       setItems([...items, item]);
+      sendWsMessage('ITEM_CREATE', item);
     }
   };
 
   const handleDeleteItem = (id: string) => {
     setItems(items.filter((i) => i.id !== id));
+    sendWsMessage('ITEM_DELETE', { id });
   };
 
   const handleAddNote = (content: string) => {
@@ -126,10 +167,12 @@ export default function App() {
       createdAt: new Date().toISOString(),
     };
     setNotes([newNote, ...notes]);
+    sendWsMessage('NOTE_CREATE', newNote);
   };
 
   const handleDeleteNote = (id: string) => {
     setNotes(notes.filter((n) => n.id !== id));
+    sendWsMessage('NOTE_DELETE', { id });
   };
 
   const openAddModal = () => {
@@ -182,12 +225,6 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-12 space-y-8 md:space-y-12">
-        {/* Welcome Section */}
-        <section className="space-y-1 md:space-y-2">
-          <h2 className="text-2xl md:text-4xl font-light serif italic leading-tight">안녕하세요, 오늘도 행복한 하루 되세요!</h2>
-          <p className="text-brand-ink/40 text-xs md:text-sm">아이의 성장을 기록하는 따뜻한 공간입니다.</p>
-        </section>
-
         {/* Timetable Section */}
         <section className="space-y-4 md:space-y-6">
           <div className="flex items-center justify-between">
