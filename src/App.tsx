@@ -142,55 +142,80 @@ export default function App() {
     setIsModalOpen(true);
   };
 
+  const [selectedDay, setSelectedDay] = useState<DayOfWeek>(() => {
+    const dayIndex = new Date().getDay();
+    const days: DayOfWeek[] = ['일', '월', '화', '수', '목', '금', '토'];
+    const today = days[dayIndex];
+    return (today === '토' || today === '일') ? '월' : today;
+  });
+
   return (
-    <div className="min-h-screen bg-brand-bg text-brand-ink selection:bg-brand-accent/10">
+    <div className="min-h-screen bg-brand-bg text-brand-ink selection:bg-brand-accent/10 pb-20 md:pb-0">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-brand-bg/80 backdrop-blur-md border-b border-black/5 px-6 py-4">
+      <header className="sticky top-0 z-40 bg-brand-bg/80 backdrop-blur-md border-b border-black/5 px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-brand-accent rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand-accent/20">
-              <Heart size={20} fill="currentColor" />
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-brand-accent rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-brand-accent/20">
+              <Heart size={16} className="md:w-5 md:h-5" fill="currentColor" />
             </div>
             <div>
-              <h1 className="text-xl font-bold serif tracking-tight">지아 시간표 매니저</h1>
-              <p className="text-[10px] uppercase tracking-widest text-brand-ink/40 font-semibold">Our Kid's Daily Routine</p>
+              <h1 className="text-lg md:text-xl font-bold serif tracking-tight">지아 시간표</h1>
+              <p className="text-[8px] md:text-[10px] uppercase tracking-widest text-brand-ink/40 font-semibold">Daily Routine</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <button className="p-2 text-brand-ink/40 hover:text-brand-ink transition-colors">
-              <Settings size={20} />
+              <Settings size={18} className="md:w-5 md:h-5" />
             </button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={openAddModal}
-              className="flex items-center gap-2 bg-brand-accent text-white px-5 py-2.5 rounded-2xl font-medium shadow-lg shadow-brand-accent/20 hover:opacity-90 transition-all"
+              className="flex items-center gap-1.5 bg-brand-accent text-white px-3 py-2 md:px-5 md:py-2.5 rounded-xl md:rounded-2xl font-medium shadow-lg shadow-brand-accent/20 hover:opacity-90 transition-all text-sm md:text-base"
             >
-              <Plus size={18} />
-              <span>일정 추가</span>
+              <Plus size={16} className="md:w-[18px] md:h-[18px]" />
+              <span className="hidden xs:inline">추가</span>
             </motion.button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-12">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-12 space-y-8 md:space-y-12">
         {/* Welcome Section */}
-        <section className="space-y-2">
-          <h2 className="text-4xl font-light serif italic">안녕하세요, 오늘도 행복한 하루 되세요!</h2>
-          <p className="text-brand-ink/40 text-sm">아이의 성장을 기록하고 일상을 계획하는 따뜻한 공간입니다.</p>
+        <section className="space-y-1 md:space-y-2">
+          <h2 className="text-2xl md:text-4xl font-light serif italic leading-tight">안녕하세요, 오늘도 행복한 하루 되세요!</h2>
+          <p className="text-brand-ink/40 text-xs md:text-sm">아이의 성장을 기록하는 따뜻한 공간입니다.</p>
         </section>
 
         {/* Timetable Section */}
-        <section className="space-y-6">
+        <section className="space-y-4 md:space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-semibold serif">주간 시간표</h3>
-            <div className="flex items-center gap-2 text-xs text-brand-ink/40 bg-white px-3 py-1.5 rounded-full border border-black/5">
-              <CalendarIcon size={14} />
+            <h3 className="text-xl md:text-2xl font-semibold serif">주간 시간표</h3>
+            <div className="flex items-center gap-2 text-[10px] md:text-xs text-brand-ink/40 bg-white px-2.5 py-1 md:px-3 md:py-1.5 rounded-full border border-black/5">
+              <CalendarIcon size={12} className="md:w-3.5 md:h-3.5" />
               <span>이번 주 일정</span>
             </div>
           </div>
-          <Timetable items={items} onEdit={openEditModal} />
+          
+          {/* Day Selector for Mobile */}
+          <div className="flex md:hidden bg-white p-1 rounded-2xl border border-black/5 shadow-sm overflow-x-auto no-scrollbar">
+            {['월', '화', '수', '목', '금'].map((day) => (
+              <button
+                key={day}
+                onClick={() => setSelectedDay(day as DayOfWeek)}
+                className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                  selectedDay === day 
+                    ? 'bg-brand-accent text-white shadow-md shadow-brand-accent/20' 
+                    : 'text-brand-ink/40 hover:bg-brand-bg'
+                }`}
+              >
+                {day}요일
+              </button>
+            ))}
+          </div>
+
+          <Timetable items={items} onEdit={openEditModal} selectedDay={selectedDay} />
         </section>
 
         {/* Notes Section */}

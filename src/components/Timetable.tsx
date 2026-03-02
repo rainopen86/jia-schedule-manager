@@ -6,9 +6,10 @@ import { motion } from 'motion/react';
 interface TimetableProps {
   items: ScheduleItem[];
   onEdit: (item: ScheduleItem) => void;
+  selectedDay: DayOfWeek;
 }
 
-export default function Timetable({ items, onEdit }: TimetableProps) {
+export default function Timetable({ items, onEdit, selectedDay }: TimetableProps) {
   const getItemsForDay = (day: DayOfWeek) => {
     return items.filter((item) => item.day === day);
   };
@@ -45,10 +46,10 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
   const currentTimePos = getCurrentTimePosition();
 
   return (
-    <div className="w-full overflow-x-auto bg-white rounded-3xl shadow-sm border border-black/5 p-8">
-      <div className="min-w-[1000px]">
+    <div className="w-full overflow-x-auto md:overflow-x-visible bg-white rounded-3xl shadow-sm border border-black/5 p-4 md:p-8 no-scrollbar">
+      <div className="min-w-full md:min-w-[1000px]">
         {/* Header */}
-        <div className="grid grid-cols-[80px_repeat(5,1fr)] mb-6">
+        <div className="hidden md:grid grid-cols-[80px_repeat(5,1fr)] mb-6">
           <div />
           {DAYS.map((day) => (
             <div key={day} className="text-center font-semibold text-sm text-brand-ink/60 uppercase tracking-widest py-3">
@@ -58,11 +59,11 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
         </div>
 
         {/* Grid Body */}
-        <div className="relative grid grid-cols-[80px_repeat(5,1fr)] border-t border-l border-black/5">
+        <div className="relative grid grid-cols-[60px_1fr] md:grid-cols-[80px_repeat(5,1fr)] border-t border-l border-black/5">
           {/* Time Column */}
           <div className="flex flex-col">
             {TIME_SLOTS.map((time) => (
-              <div key={time} className="h-[80px] border-b border-r border-black/5 text-[11px] font-medium text-brand-ink/40 p-2 flex items-start justify-center">
+              <div key={time} className="h-[80px] border-b border-r border-black/5 text-[10px] md:text-[11px] font-medium text-brand-ink/40 p-1 md:p-2 flex items-start justify-center">
                 {time}
               </div>
             ))}
@@ -70,7 +71,12 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
 
           {/* Day Columns */}
           {DAYS.map((day) => (
-            <div key={day} className="relative h-full border-r border-black/5">
+            <div 
+              key={day} 
+              className={`relative h-full border-r border-black/5 ${
+                day !== selectedDay ? 'hidden md:block' : 'block'
+              }`}
+            >
               {/* Grid Lines */}
               {TIME_SLOTS.map((time) => (
                 <div key={time} className="h-[80px] border-b border-black/5" />
@@ -82,8 +88,8 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
                   className="absolute left-0 right-0 z-10 border-t-2 border-red-400/50 pointer-events-none"
                   style={{ top: currentTimePos }}
                 >
-                  <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-red-400 shadow-sm" />
-                  <div className="absolute left-3 -top-2.5 bg-red-400 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
+                  <div className="absolute -left-1 -top-1 w-2 md:w-2.5 md:h-2.5 rounded-full bg-red-400 shadow-sm" />
+                  <div className="absolute left-3 -top-2.5 bg-red-400 text-white text-[8px] md:text-[9px] px-1 md:px-1.5 py-0.5 rounded-full font-bold shadow-sm whitespace-nowrap">
                     현재 시간
                   </div>
                 </div>
@@ -99,7 +105,7 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     whileHover={{ scale: 1.02 }}
                     onClick={() => onEdit(item)}
-                    className="absolute left-1.5 right-1.5 rounded-xl p-3 text-sm font-semibold cursor-pointer shadow-sm overflow-hidden border border-black/5 flex flex-col justify-center"
+                    className="absolute left-1 md:left-1.5 right-1 md:right-1.5 rounded-lg md:rounded-xl p-2 md:p-3 text-xs md:text-sm font-semibold cursor-pointer shadow-sm overflow-hidden border border-black/5 flex flex-col justify-center"
                     style={{
                       top: pos.top,
                       height: pos.height,
@@ -109,9 +115,9 @@ export default function Timetable({ items, onEdit }: TimetableProps) {
                     <div className="flex flex-col h-full gap-0.5">
                       <span className="truncate leading-tight">{item.title}</span>
                       {item.location && (
-                        <span className="text-[11px] opacity-60 truncate font-medium">{item.location}</span>
+                        <span className="text-[9px] md:text-[11px] opacity-60 truncate font-medium">{item.location}</span>
                       )}
-                      <span className="mt-auto text-[10px] opacity-40 font-medium">
+                      <span className="mt-auto text-[8px] md:text-[10px] opacity-40 font-medium">
                         {item.startTime} - {item.endTime}
                       </span>
                     </div>
